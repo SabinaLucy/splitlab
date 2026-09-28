@@ -1,0 +1,28 @@
+name: splitlab
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - scipy
+  - statsmodels
+  - scikit-learn
+  - lightgbm
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - pyarrow
+  - fastapi
+  - uvicorn
+  - pydantic
+  - httpx
+  - pytest
+  - pytest-cov
+  - pandera
+  - mlflow
+  - ruff
+  - pip
+  - pip:
+      - obp

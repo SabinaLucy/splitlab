@@ -1,0 +1,14 @@
+data/raw/
+data/obd/
+data/processed/
+__pycache__/
+.ipynb_checkpoints/
+*.egg-info/
+.env
+.venv/
+mlruns/
+node_modules/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+condaenv.*.requirements.txt
