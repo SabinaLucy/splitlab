@@ -16,3 +16,9 @@
 
 &#x20; first and wait for approval before writing code.
 
+\- SQL lives in sql/, never as inline strings inside core/.
+
+\- Every SQL metric needs a parity test against its pandas version.
+
+\- Never run aws commands and never read or write credentials. Sabina runs all AWS steps manually.
+

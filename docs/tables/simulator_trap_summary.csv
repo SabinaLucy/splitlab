@@ -1,0 +1,6 @@
+trap,realized_lift,n_treatment,n_control
+none (baseline),0.014705111439791363,9915,10085
+A/A (effect zeroed),-0.0003355063414124393,9915,10085
+SRM (55/45 split),,10972,9028
+retention drop (0.08),0.020523065169576027,9915,10085
+"spillover (0.15 frac, 0.5 strength)",0.013535674559298494,9915,10085

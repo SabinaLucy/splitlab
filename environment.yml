@@ -26,3 +26,6 @@ dependencies:
   - pip
   - pip:
       - obp
+  - python-duckdb
+  - boto3
+  - pyyaml

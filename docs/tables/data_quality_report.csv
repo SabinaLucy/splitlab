@@ -1,0 +1,17 @@
+metric,value
+log_random_rows_clean,1186049.0
+log_standard_1_rows_clean,1124532.0
+log_standard_2_rows_clean,288604.0
+max_duplicate_pct_across_logs,2.3326801964148536
+max_missing_target_pct_across_logs,0.0
+exposure_cv_log_random,0.19710821196508982
+exposure_min_log_random,1.0
+exposure_max_log_random,214.0
+low_exposure_video_count,272.0
+low_exposure_traffic_share_pct,0.4283971404216858
+baseline_click_rate_overall,0.1761596696257912
+baseline_click_rate_min_segment,0.13786008230452676
+baseline_click_rate_max_segment,0.24742268041237114
+min_date_time_agreement_pct,83.32000000000001
+max_id_coverage_missing_pct,0.0
+watch_time_over_threshold_pct,0.6465766680677278

@@ -12,3 +12,7 @@ node_modules/
 .ruff_cache/
 .DS_Store
 condaenv.*.requirements.txt
+.env
+*.pem
+.aws/
+infra/*.tfstate
