@@ -22,10 +22,9 @@ What's planted, on purpose:
       special code since it's a property of how multi-day data gets
       analyzed, not how it's generated.
 
-Calibration: the default baseline_* rates below are placeholders. Before
-trusting anything this simulator produces as representative of the real
-platform, replace them with the actual numbers from
-docs/tables/data_quality_report.csv (baseline_click_rate_overall, etc.).
+Calibration: the baseline_* defaults below were set from the real numbers in
+docs/tables/data_quality_report.csv (log_random, KuaiRand-Pure). Latency is
+not in the real data, so it stays a simulated value.
 
 This module is pure core/ Python: numpy and pandas only. No FastAPI, no
 dashboard code, per CLAUDE.md.
@@ -39,12 +38,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-# ---------------------------------------------------------------------------
-# Segments
-# ---------------------------------------------------------------------------
-# These labels match the `user_active_degree` categories found in the real
-# KuaiRand `user_features_pure.csv`. Using the same labels here means the
-# segment effect this simulator plants can be compared directly against
+# These labels match the `user_active_degree` categories found in the real KuaiRand `user_features_pure.csv`. Using the same labels here means the segment effect this simulator plants can be compared directly against
 # whatever Phase 4's uplift model recovers from simulated data.
 
 SEGMENTS = (
@@ -57,8 +51,7 @@ SEGMENTS = (
     "30day_retention",
 )
 
-# Rough relative size of each segment in the simulated population. Not fit to
-# the real distribution, edit this if you want to match it exactly.
+# Rough relative size of each segment in the simulated population. Not fit to the real distribution, edit this if you want to match it exactly.
 DEFAULT_SEGMENT_WEIGHTS = {
     "day_new": 0.05,
     "new_active": 0.10,
@@ -69,11 +62,8 @@ DEFAULT_SEGMENT_WEIGHTS = {
     "30day_retention": 0.10,
 }
 
-# How much extra lift each segment gets from the treatment, as a multiplier
-# on the base treatment effect. 1.0 = no extra lift, below 1.0 = less lift
-# than average, above 1.0 = more. This is what Phase 4's uplift model is
-# supposed to recover. Shaped qualitatively off the real finding in
-# 00_data_quality.ipynb: day_new had the highest baseline click rate,
+# How much extra lift each segment gets from the treatment, as a multiplier on the base treatment effect. 1.0 = no extra lift, below 1.0 = less lift than average, above 1.0 = more. This is what Phase 4's uplift model is
+# supposed to recover. Shaped qualitatively off the real finding in 00_data_quality.ipynb: day_new had the highest baseline click rate,
 # 30day_retention the lowest, so newer users are given more room to benefit.
 DEFAULT_SEGMENT_EFFECT_MULTIPLIER = {
     "day_new": 2.5,
@@ -143,24 +133,29 @@ class TrapConfig:
 class SimulatorConfig:
     """Everything needed to generate one reproducible simulated experiment.
 
-    Calibrate the baseline_* fields against the real numbers in
-    docs/tables/data_quality_report.csv before trusting results from this
-    simulator as representative of the real platform. The values below are
-    reasonable placeholders, not measured facts.
+    The baseline_* fields were calibrated against the real numbers in
+    docs/tables/data_quality_report.csv. Latency is simulated only.
     """
 
     seed: int = 42
     n_users: int = 20_000
     experiment_days: int = 14
 
-    # Baseline rates. Calibrate these from docs/tables/data_quality_report.csv.
-    baseline_click_rate: float = 0.12
-    baseline_long_view_rate: float = 0.087
-    baseline_like_rate: float = 0.02
-    baseline_follow_rate: float = 0.005
-    baseline_watch_time_s: float = 25.0
-    baseline_daily_active_prob: float = 0.55  # chance a user returns on a given day
+    # Baseline rates, calibrated from docs/tables/data_quality_report.csv.
+    baseline_click_rate: float = 0.176
+    # Long view is only drawn for clicked rows, so this is P(long_view | click).
+    baseline_long_view_rate: float = 0.48
+    baseline_like_rate: float = 0.0108
+    baseline_follow_rate: float = 0.00074
+    # Median of the lognormal for a middle_active user day, in seconds.
+    baseline_watch_time_s: float = 10.0
+    baseline_daily_active_prob: float = 0.35  # chance a user returns on a given day
     baseline_latency_ms: float = 120.0  # simulated only, not present in real data
+
+    # Spread of user day watch time on the log scale. The default keeps the
+    # original simulator behavior. The real log_random data measured about
+    # 1.56, so use that when realistic noise matters (power, CUPED gain).
+    watch_time_log_sd: float = 0.5
 
     # The planted treatment effect on the primary metric (watch time), and
     # the click / long_view / like / follow probabilities, which move with it
@@ -193,10 +188,6 @@ class SimulatorConfig:
         return cfg
 
 
-
-# Internal helpers
-
-
 def _assign_segments(rng: np.random.Generator, n_users: int, weights: dict) -> np.ndarray:
     segs = list(weights.keys())
     probs = np.array(list(weights.values()), dtype=float)
@@ -209,8 +200,6 @@ def _assign_variant(rng: np.random.Generator, n_users: int, treatment_share: flo
     return np.where(draws < treatment_share, "treatment", "control")
 
 
-
-# Main entry point
 def simulate_experiment(config: SimulatorConfig) -> tuple[pd.DataFrame, dict]:
     """Generate one reproducible simulated experiment.
 
@@ -247,7 +236,7 @@ def simulate_experiment(config: SimulatorConfig) -> tuple[pd.DataFrame, dict]:
     level_mult = np.array([config.segment_level_multiplier[s] for s in segments])
     pre_period_watch_time = rng.lognormal(
         mean=np.log(config.baseline_watch_time_s * level_mult),
-        sigma=0.5,
+        sigma=config.watch_time_log_sd,
     )
 
     rows: list[pd.DataFrame] = []
@@ -255,14 +244,14 @@ def simulate_experiment(config: SimulatorConfig) -> tuple[pd.DataFrame, dict]:
     for day_offset in range(config.experiment_days):
         date = assignment_date + pd.Timedelta(days=day_offset)
 
-        # --- novelty decay: treatment effect shrinks over the experiment ---
+        # Novelty decay: the treatment effect shrinks over the experiment.
         if config.experiment_days > 1:
             decay_progress = day_offset / (config.experiment_days - 1)
         else:
             decay_progress = 0.0
         novelty_mult = 1.0 - config.traps.novelty_decay * decay_progress
 
-        # --- per-user daily active probability (this is retention) ---
+        # Per-user daily active probability. This is what retention measures.
         active_prob = np.full(config.n_users, config.baseline_daily_active_prob)
         treat_mask = variant == "treatment"
         active_prob[treat_mask] -= config.traps.retention_drop
@@ -280,7 +269,7 @@ def simulate_experiment(config: SimulatorConfig) -> tuple[pd.DataFrame, dict]:
         spill_active = is_spillover[active_idx]
         level_mult_active = level_mult[active_idx]
 
-        # --- effective treatment effect per active user, this day ---
+        # Effective treatment effect per active user on this day.
         seg_effect_mult = np.array(
             [config.segment_effect_multiplier[s] for s in seg_active]
         )
@@ -298,11 +287,13 @@ def simulate_experiment(config: SimulatorConfig) -> tuple[pd.DataFrame, dict]:
             * config.traps.spillover_strength
         )
 
-        # --- watch time: lognormal around a segment- and effect-adjusted mean ---
+        # Watch time: lognormal around a segment and effect adjusted mean.
         mean_watch_time = config.baseline_watch_time_s * level_mult_active * (1.0 + effect)
-        watch_time = rng.lognormal(mean=np.log(mean_watch_time), sigma=0.5)
+        watch_time = rng.lognormal(
+            mean=np.log(mean_watch_time), sigma=config.watch_time_log_sd
+        )
 
-        # --- click / long_view / like / follow, lifted by the same effect ---
+        # Click, long_view, like and follow, lifted by the same effect.
         click_prob = np.clip(config.baseline_click_rate * (1.0 + effect), 0.001, 0.999)
         is_click = rng.random(n_active) < click_prob
 
@@ -321,12 +312,11 @@ def simulate_experiment(config: SimulatorConfig) -> tuple[pd.DataFrame, dict]:
         )
         is_follow = rng.random(n_active) < follow_prob
 
-        # --- latency: simulated only, never present in the real data ---
+        # Latency is simulated only, never present in the real data.
         latency_ms = rng.normal(config.baseline_latency_ms, 15, size=n_active)
         if config.traps.retention_drop > 0:
-            # Treated as a plausible co-symptom of the same broken release
-            # that hurt retention. Mild, and only shows up when that trap
-            # is on.
+            # A plausible co-symptom of the same broken release that hurt
+            # retention. Mild, and only shows up when that trap is on.
             latency_ms = latency_ms + np.where(var_active == "treatment", 10.0, 0.0)
         latency_ms = np.clip(latency_ms, 1, None)
 

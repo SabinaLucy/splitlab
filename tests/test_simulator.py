@@ -27,9 +27,9 @@ from core.simulator import SimulatorConfig, simulate_experiment, simulate_aa_exp
 from core.validation import simulator_event_schema, validate_simulator_output
 
 
-# ---------------------------------------------------------------------------
+
 # Helpers shared across tests
-# ---------------------------------------------------------------------------
+
 
 def _daily_retention_by_variant(events: pd.DataFrame) -> pd.DataFrame:
     """Day N -> day N+1 return rate per variant, same logic as
@@ -67,9 +67,8 @@ def _average_daily_lift(novelty_decay: float, n_reps: int, n_users: int, days: i
     return np.mean(lifts, axis=0)
 
 
-# ---------------------------------------------------------------------------
+
 # Reproducibility
-# ---------------------------------------------------------------------------
 
 def test_same_seed_reproduces_identical_output():
     config = SimulatorConfig(n_users=2_000, experiment_days=5, seed=42)
@@ -90,9 +89,8 @@ def test_different_seed_gives_different_output():
     assert not events_a.equals(events_b)
 
 
-# ---------------------------------------------------------------------------
+
 # A/A mode
-# ---------------------------------------------------------------------------
 
 def test_aa_mode_zeroes_true_effect_without_mutating_original_config():
     config = SimulatorConfig(n_users=1_000, experiment_days=3, true_effect_pct=0.02)
@@ -113,9 +111,9 @@ def test_simulate_aa_experiment_matches_manual_aa_mode():
     assert truth_a["true_effect_pct"] == 0.0
 
 
-# ---------------------------------------------------------------------------
+
 # Trap: SRM
-# ---------------------------------------------------------------------------
+
 
 def test_default_assignment_is_close_to_fifty_fifty():
     config = SimulatorConfig(n_users=5_000, experiment_days=1, seed=1)
@@ -136,9 +134,8 @@ def test_srm_trap_skews_assignment_away_from_fifty_fifty():
     assert realized_share > 0.52
 
 
-# ---------------------------------------------------------------------------
+
 # Trap: novelty decay
-# ---------------------------------------------------------------------------
 
 def test_novelty_decay_shrinks_the_effect_toward_zero_over_the_experiment():
     n_reps, n_users, days = 8, 4_000, 10
@@ -159,10 +156,8 @@ def test_novelty_decay_shrinks_the_effect_toward_zero_over_the_experiment():
     assert decay_drop > no_decay_drop + 0.008
 
 
-# ---------------------------------------------------------------------------
-# Trap: broken guardrail (retention drop)
-# ---------------------------------------------------------------------------
 
+# Trap: broken guardrail (retention drop)
 def test_retention_drop_trap_lowers_next_day_return_rate_in_treatment():
     config = SimulatorConfig(n_users=8_000, experiment_days=5, seed=1)
     config.traps.retention_drop = 0.10
@@ -197,10 +192,8 @@ def test_retention_drop_trap_does_not_hide_the_primary_metric_win():
     assert mean_watch_time["treatment"] > mean_watch_time["control"]
 
 
-# ---------------------------------------------------------------------------
-# Trap: spillover
-# ---------------------------------------------------------------------------
 
+# Trap: spillover
 def test_zero_spillover_fraction_contaminates_nobody():
     config = SimulatorConfig(n_users=3_000, experiment_days=3, seed=1)
     # spillover_fraction defaults to 0.0
@@ -254,10 +247,8 @@ def test_spillover_only_changes_contaminated_control_rows_everything_else_is_ide
     assert n_contaminated_rows_seen > 0.7 * spillover_truth["n_spillover_contaminated_control_users"]
 
 
-# ---------------------------------------------------------------------------
-# Peeking: not a trap to trigger, but the structural property that makes
-# peeking possible
-# ---------------------------------------------------------------------------
+
+# Peeking: not a trap to trigger, but the structural property that makes peeking possible
 
 def test_output_supports_peeking_style_cumulative_analysis():
     """Peeking isn't something the simulator plants, it's a property of how
@@ -287,9 +278,8 @@ def test_output_supports_peeking_style_cumulative_analysis():
     assert cumulative_users_seen[-1] > cumulative_users_seen[0]
 
 
-# ---------------------------------------------------------------------------
+
 # Schema validation
-# ---------------------------------------------------------------------------
 
 def test_default_simulator_output_passes_schema_validation():
     config = SimulatorConfig(n_users=1_000, experiment_days=3, seed=1)
@@ -321,10 +311,8 @@ def test_schema_rejects_a_negative_watch_time():
         simulator_event_schema.validate(broken, lazy=True)
 
 
-# ---------------------------------------------------------------------------
-# Panel shape
-# ---------------------------------------------------------------------------
 
+# Panel shape
 def test_output_is_a_multi_day_panel_with_no_duplicate_user_day_rows():
     config = SimulatorConfig(n_users=2_000, experiment_days=7, seed=1)
     events, _ = simulate_experiment(config)

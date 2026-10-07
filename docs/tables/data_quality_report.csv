@@ -15,3 +15,15 @@ baseline_click_rate_max_segment,0.24742268041237114
 min_date_time_agreement_pct,83.32000000000001
 max_id_coverage_missing_pct,0.0
 watch_time_over_threshold_pct,0.6465766680677278
+baseline_long_view_rate_overall,0.08496191978577614
+baseline_long_view_rate_given_click,0.48055366766538715
+baseline_like_rate_overall,0.004798284050658953
+baseline_follow_rate_overall,0.0002613720006509006
+user_day_watch_s_median,9.995
+user_day_watch_s_mean,36.897155300481735
+user_day_watch_s_sd,71.49919248548342
+user_day_watch_log_sd,1.5590689236089175
+daily_active_share_log_standard_2,0.3458919912982003
+pre_post_users_overlap,25010.0
+pre_post_watch_corr_raw,0.25092646204019403
+pre_post_watch_corr_log,0.34490366283062546
